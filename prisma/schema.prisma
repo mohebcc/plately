@@ -122,7 +122,9 @@ model Restaurant {
   coverImage   MediaAsset?       @relation("RestaurantCover", fields: [coverImageId], references: [id])
   logoImage    MediaAsset?       @relation("RestaurantLogo", fields: [logoImageId], references: [id])
   domainMappings DomainMapping[]
-  cuisineTags   CuisineTag[]      @relation("RestaurantCuisine", references: [id])
+  // Many-to-many relation with CuisineTag. Remove the explicit `references` attribute to allow
+  // implicit join table. The relation name "RestaurantCuisine" still groups the sides.
+  cuisineTags   CuisineTag[]      @relation("RestaurantCuisine")
   categories    MenuCategory[]
   orders        Order[]
   reviews       Review[]
@@ -192,7 +194,9 @@ model CuisineTag {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  restaurants Restaurant[] @relation("RestaurantCuisine", references: [id])
+  // Many-to-many relation with Restaurant. Remove the explicit `references` attribute to allow
+  // implicit join table. The relation name "RestaurantCuisine" still groups the sides.
+  restaurants Restaurant[] @relation("RestaurantCuisine")
 }
 
 /// Many‑to‑many join table for restaurants and cuisine tags (Prisma implicit through above)
@@ -371,7 +375,11 @@ model City {
   updatedAt DateTime    @updatedAt
 
   addresses Address[]
-  restaurants Restaurant[] @relation("CityRestaurants")
+  // Removed direct many-to-many relation between City and Restaurant.  Restaurants can be
+  // associated with a city via their Address (Address.cityId). If in the future a
+  // many-to-many relation between City and Restaurant is needed, define an explicit
+  // join model instead of using an implicit relation.
+  // restaurants Restaurant[] @relation("CityRestaurants")
   featuredPlacements FeaturedPlacement[]
 
   @@index([slug])
