@@ -153,7 +153,8 @@ model SubscriptionPlan {
 /// Subscription instance for a restaurant
 model Subscription {
   id                  String            @id @default(uuid())
-  restaurantId        String
+  /// The restaurant this subscription is for. Unique to enforce one active subscription per restaurant
+  restaurantId        String   @unique
   planId              String
   stripeSubscriptionId String?
   status              String            // raw Stripe status
@@ -164,7 +165,7 @@ model Subscription {
   restaurant  Restaurant   @relation(fields: [restaurantId], references: [id])
   plan        SubscriptionPlan @relation(fields: [planId], references: [id])
 
-  @@index([restaurantId])
+  // Unique index for restaurantId is handled via the @unique attribute
 }
 
 /// Mapping between restaurant and a custom domain or subdomain
