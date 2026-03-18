@@ -86,10 +86,6 @@ model User {
   reviews          Review[]
   adminActionLogs  AdminActionLog[]
 
-  // Media assets uploaded by this user (e.g., restaurant owner uploading photos). This completes the
-  // one‑to‑many relation from MediaAsset.uploadedBy to User.
-  mediaAssets      MediaAsset[]
-
   @@index([email])
 }
 
@@ -112,7 +108,7 @@ model Restaurant {
 
   // Foreign keys
   ownerId         String?
-  // planId removed to avoid ambiguous relation to SubscriptionPlan
+  planId          String?
   subscriptionId  String?
   addressId       String?
   coverImageId    String?
@@ -120,15 +116,13 @@ model Restaurant {
 
   // Relations
   owner        User?             @relation("RestaurantOwners", fields: [ownerId], references: [id])
-  // Removed direct relation to SubscriptionPlan. The active plan can be derived from the Subscription record.
+  plan         SubscriptionPlan? @relation(fields: [planId], references: [id])
   subscription Subscription?     @relation(fields: [subscriptionId], references: [id])
   address      Address?          @relation(fields: [addressId], references: [id])
   coverImage   MediaAsset?       @relation("RestaurantCover", fields: [coverImageId], references: [id])
   logoImage    MediaAsset?       @relation("RestaurantLogo", fields: [logoImageId], references: [id])
   domainMappings DomainMapping[]
-  // Many-to-many relation with CuisineTag. Remove the explicit `references` attribute to allow
-  // implicit join table. The relation name "RestaurantCuisine" still groups the sides.
-  cuisineTags   CuisineTag[]      @relation("RestaurantCuisine")
+  cuisineTags   CuisineTag[]      @relation("RestaurantCuisine", references: [id])
   categories    MenuCategory[]
   orders        Order[]
   reviews       Review[]
@@ -159,8 +153,7 @@ model SubscriptionPlan {
 /// Subscription instance for a restaurant
 model Subscription {
   id                  String            @id @default(uuid())
-  /// The restaurant this subscription is for. Unique to enforce one active subscription per restaurant
-  restaurantId        String   @unique
+  restaurantId        String
   planId              String
   stripeSubscriptionId String?
   status              String            // raw Stripe status
@@ -171,7 +164,7 @@ model Subscription {
   restaurant  Restaurant   @relation(fields: [restaurantId], references: [id])
   plan        SubscriptionPlan @relation(fields: [planId], references: [id])
 
-  // Unique index for restaurantId is handled via the @unique attribute
+  @@index([restaurantId])
 }
 
 /// Mapping between restaurant and a custom domain or subdomain
@@ -198,13 +191,7 @@ model CuisineTag {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  // Many-to-many relation with Restaurant. Remove the explicit `references` attribute to allow
-  // implicit join table. The relation name "RestaurantCuisine" still groups the sides.
-  restaurants Restaurant[] @relation("RestaurantCuisine")
-
-  // One-to-many relation for featured placements associated with this cuisine tag.
-  // A CuisineTag can have multiple FeaturedPlacement entries, each referencing this cuisine via cuisineId.
-  featuredPlacements FeaturedPlacement[]
+  restaurants Restaurant[] @relation("RestaurantCuisine", references: [id])
 }
 
 /// Many‑to‑many join table for restaurants and cuisine tags (Prisma implicit through above)
@@ -359,15 +346,12 @@ model MediaAsset {
   alt         String?
   type        String     // image, video
   uploadedById String?
+  restaurantId String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   uploadedBy  User?      @relation(fields: [uploadedById], references: [id])
-  // Media assets no longer hold a direct foreign key to a restaurant. Instead, cover and
-  // logo images on a Restaurant are referenced via the coverImageId and logoImageId fields.
-  // If in the future you need to associate arbitrary media assets with a restaurant,
-  // introduce a separate relation or join table instead of an optional FK here.
-  // restaurantId and restaurant relation have been removed to avoid ambiguous relations.
+  restaurant  Restaurant? @relation(fields: [restaurantId], references: [id])
 
   // Reverse relations defined on referencing models
 }
@@ -383,11 +367,7 @@ model City {
   updatedAt DateTime    @updatedAt
 
   addresses Address[]
-  // Removed direct many-to-many relation between City and Restaurant.  Restaurants can be
-  // associated with a city via their Address (Address.cityId). If in the future a
-  // many-to-many relation between City and Restaurant is needed, define an explicit
-  // join model instead of using an implicit relation.
-  // restaurants Restaurant[] @relation("CityRestaurants")
+  restaurants Restaurant[] @relation("CityRestaurants")
   featuredPlacements FeaturedPlacement[]
 
   @@index([slug])
