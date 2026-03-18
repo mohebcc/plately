@@ -108,7 +108,7 @@ model Restaurant {
 
   // Foreign keys
   ownerId         String?
-  planId          String?
+  // planId removed to avoid ambiguous relation to SubscriptionPlan
   subscriptionId  String?
   addressId       String?
   coverImageId    String?
@@ -116,7 +116,7 @@ model Restaurant {
 
   // Relations
   owner        User?             @relation("RestaurantOwners", fields: [ownerId], references: [id])
-  plan         SubscriptionPlan? @relation(fields: [planId], references: [id])
+  // Removed direct relation to SubscriptionPlan. The active plan can be derived from the Subscription record.
   subscription Subscription?     @relation(fields: [subscriptionId], references: [id])
   address      Address?          @relation(fields: [addressId], references: [id])
   coverImage   MediaAsset?       @relation("RestaurantCover", fields: [coverImageId], references: [id])
