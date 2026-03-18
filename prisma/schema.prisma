@@ -352,19 +352,43 @@ model BusinessHour {
 
 /// Media assets uploaded (images, videos)
 model MediaAsset {
-  id          String     @id @default(uuid())
-  url         String
-  alt         String?
-  type        String     // image, video
-  uploadedById String?
-  restaurantId String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id            String     @id @default(uuid())
+  url           String
+  alt           String?
+  type          String     // e.g. image, video
+  uploadedById  String?
+  restaurantId  String?
+  menuItemId    String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  uploadedBy  User?      @relation("UploadedMedia", fields: [uploadedById], references: [id])
-  restaurant  Restaurant? @relation("RestaurantMedia", fields: [restaurantId], references: [id])
+  /**
+   * User who uploaded this media.  Optional because media may be uploaded
+   * programmatically during onboarding.  Complements the User.mediaAssets relation.
+   */
+  uploadedBy     User?        @relation("UploadedMedia", fields: [uploadedById], references: [id])
 
-  // Reverse relations defined on referencing models
+  /**
+   * Generic gallery association for a restaurant.  Complements the
+   * Restaurant.mediaAssets relation.  Use this for arbitrary gallery images.
+   */
+  restaurant     Restaurant?   @relation("RestaurantMedia", fields: [restaurantId], references: [id])
+
+  /**
+   * Image associated with a menu item (thumbnail).  Complements the
+   * MenuItem.image relation.
+   */
+  menuItem       MenuItem?     @relation("MenuItemImage", fields: [menuItemId], references: [id])
+
+  /**
+   * Cover image for a restaurant.  Complements the Restaurant.coverImage relation.
+   */
+  coverFor       Restaurant?   @relation("RestaurantCover")
+
+  /**
+   * Logo image for a restaurant.  Complements the Restaurant.logoImage relation.
+   */
+  logoFor        Restaurant?   @relation("RestaurantLogo")
 }
 
 /// List of cities for geo targeting
