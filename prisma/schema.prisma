@@ -197,6 +197,10 @@ model CuisineTag {
   // Many-to-many relation with Restaurant. Remove the explicit `references` attribute to allow
   // implicit join table. The relation name "RestaurantCuisine" still groups the sides.
   restaurants Restaurant[] @relation("RestaurantCuisine")
+
+  // One-to-many relation for featured placements associated with this cuisine tag.
+  // A CuisineTag can have multiple FeaturedPlacement entries, each referencing this cuisine via cuisineId.
+  featuredPlacements FeaturedPlacement[]
 }
 
 /// Many‑to‑many join table for restaurants and cuisine tags (Prisma implicit through above)
