@@ -86,6 +86,9 @@ model User {
   reviews          Review[]
   adminActionLogs  AdminActionLog[]
 
+  /// Media assets uploaded by this user.
+  mediaAssets     MediaAsset[]       @relation("UploadedMedia")
+
   @@index([email])
 }
 
@@ -108,7 +111,8 @@ model Restaurant {
 
   // Foreign keys
   ownerId         String?
-  planId          String?
+  // planId removed; use subscription plan via Subscription
+  //planId         String?
   subscriptionId  String?
   addressId       String?
   coverImageId    String?
@@ -116,13 +120,17 @@ model Restaurant {
 
   // Relations
   owner        User?             @relation("RestaurantOwners", fields: [ownerId], references: [id])
-  plan         SubscriptionPlan? @relation(fields: [planId], references: [id])
+  // plan relation removed; restaurant's plan derived via subscription
+  //plan         SubscriptionPlan? @relation(fields: [planId], references: [id])
   subscription Subscription?     @relation(fields: [subscriptionId], references: [id])
   address      Address?          @relation(fields: [addressId], references: [id])
   coverImage   MediaAsset?       @relation("RestaurantCover", fields: [coverImageId], references: [id])
   logoImage    MediaAsset?       @relation("RestaurantLogo", fields: [logoImageId], references: [id])
+
+  /// Generic media assets associated with this restaurant (e.g. gallery).
+  mediaAssets  MediaAsset[]       @relation("RestaurantMedia")
   domainMappings DomainMapping[]
-  cuisineTags   CuisineTag[]      @relation("RestaurantCuisine", references: [id])
+  cuisineTags   CuisineTag[]      @relation("RestaurantCuisine")
   categories    MenuCategory[]
   orders        Order[]
   reviews       Review[]
@@ -164,7 +172,7 @@ model Subscription {
   restaurant  Restaurant   @relation(fields: [restaurantId], references: [id])
   plan        SubscriptionPlan @relation(fields: [planId], references: [id])
 
-  @@index([restaurantId])
+  @@unique([restaurantId])
 }
 
 /// Mapping between restaurant and a custom domain or subdomain
@@ -191,7 +199,10 @@ model CuisineTag {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  restaurants Restaurant[] @relation("RestaurantCuisine", references: [id])
+  restaurants Restaurant[] @relation("RestaurantCuisine")
+
+  /// Featured placements associated with this cuisine tag
+  featuredPlacements FeaturedPlacement[] @relation("CuisineFeaturedPlacements")
 }
 
 /// Many‑to‑many join table for restaurants and cuisine tags (Prisma implicit through above)
@@ -350,8 +361,8 @@ model MediaAsset {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  uploadedBy  User?      @relation(fields: [uploadedById], references: [id])
-  restaurant  Restaurant? @relation(fields: [restaurantId], references: [id])
+  uploadedBy  User?      @relation("UploadedMedia", fields: [uploadedById], references: [id])
+  restaurant  Restaurant? @relation("RestaurantMedia", fields: [restaurantId], references: [id])
 
   // Reverse relations defined on referencing models
 }
@@ -367,7 +378,7 @@ model City {
   updatedAt DateTime    @updatedAt
 
   addresses Address[]
-  restaurants Restaurant[] @relation("CityRestaurants")
+  // restaurants relation removed; restaurant's city is inferred via associated address
   featuredPlacements FeaturedPlacement[]
 
   @@index([slug])
@@ -385,7 +396,8 @@ model FeaturedPlacement {
 
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
   city         City?       @relation(fields: [cityId], references: [id])
-  cuisine      CuisineTag? @relation(fields: [cuisineId], references: [id])
+  /// Cuisine tag for this featured placement
+  cuisine      CuisineTag? @relation("CuisineFeaturedPlacements", fields: [cuisineId], references: [id])
 }
 
 /// Analytics events for simple tracking
