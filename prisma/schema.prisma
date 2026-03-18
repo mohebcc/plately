@@ -1,0 +1,412 @@
+// Prisma schema for Plately multi‑tenant restaurant platform
+
+// The Prisma Client is used to access our Postgres database.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------------
+
+/// Roles assigned to users. Determines access in the system.
+enum UserRole {
+  ADMIN
+  RESTAURANT_OWNER
+  CUSTOMER
+}
+
+/// Price level for restaurants (number of '$' signs)
+enum PriceLevel {
+  ONE   // $
+  TWO   // $$
+  THREE // $$$
+  FOUR  // $$$$
+}
+
+/// Order status values as the order progresses
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+/// Pickup vs delivery
+enum OrderType {
+  PICKUP
+  DELIVERY
+}
+
+/// Review moderation status
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+/// Connection status of custom domain mapping
+enum DomainStatus {
+  PENDING
+  VERIFIED
+  CONNECTED
+}
+
+/// Type of featured placement
+enum FeaturedType {
+  HOMEPAGE
+  CITY
+  CUISINE
+}
+
+// -----------------------------------------------------------------------------
+// Models
+// -----------------------------------------------------------------------------
+
+/// All users of the system (admin, restaurant owner, customer)
+model User {
+  id        String     @id @default(uuid())
+  name      String?
+  email     String     @unique
+  password  String?
+  role      UserRole   @default(CUSTOMER)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relations
+  restaurants      Restaurant[]   @relation("RestaurantOwners")
+  orders           Order[]
+  reviews          Review[]
+  adminActionLogs  AdminActionLog[]
+
+  @@index([email])
+}
+
+/// Restaurants listed on the platform
+model Restaurant {
+  id              String               @id @default(uuid())
+  name            String
+  slug            String               @unique
+  description     String?
+  priceLevel      PriceLevel           @default(TWO)
+  phone           String?
+  email           String?
+  websiteUrl      String?
+  ratingAvg       Float?               @default(0)
+  reviewCount     Int                  @default(0)
+  isPublished     Boolean              @default(false)
+  isFeatured      Boolean              @default(false)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  // Foreign keys
+  ownerId         String?
+  planId          String?
+  subscriptionId  String?
+  addressId       String?
+  coverImageId    String?
+  logoImageId     String?
+
+  // Relations
+  owner        User?             @relation("RestaurantOwners", fields: [ownerId], references: [id])
+  plan         SubscriptionPlan? @relation(fields: [planId], references: [id])
+  subscription Subscription?     @relation(fields: [subscriptionId], references: [id])
+  address      Address?          @relation(fields: [addressId], references: [id])
+  coverImage   MediaAsset?       @relation("RestaurantCover", fields: [coverImageId], references: [id])
+  logoImage    MediaAsset?       @relation("RestaurantLogo", fields: [logoImageId], references: [id])
+  domainMappings DomainMapping[]
+  cuisineTags   CuisineTag[]      @relation("RestaurantCuisine", references: [id])
+  categories    MenuCategory[]
+  orders        Order[]
+  reviews       Review[]
+  businessHours BusinessHour[]
+  featuredPlacements FeaturedPlacement[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@index([slug])
+}
+
+/// Subscription plans available to restaurants
+model SubscriptionPlan {
+  id           String    @id @default(uuid())
+  name         String
+  slug         String    @unique
+  setupFee     Int       // in cents
+  monthlyFee   Int       // in cents
+  description  String?
+  features     Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  subscriptions Subscription[]
+
+  @@index([slug])
+}
+
+/// Subscription instance for a restaurant
+model Subscription {
+  id                  String            @id @default(uuid())
+  restaurantId        String
+  planId              String
+  stripeSubscriptionId String?
+  status              String            // raw Stripe status
+  startDate           DateTime
+  endDate             DateTime?
+  nextBillingDate     DateTime?
+
+  restaurant  Restaurant   @relation(fields: [restaurantId], references: [id])
+  plan        SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([restaurantId])
+}
+
+/// Mapping between restaurant and a custom domain or subdomain
+model DomainMapping {
+  id           String       @id @default(uuid())
+  restaurantId String
+  domain       String?      // e.g. restaurantname.com
+  subdomain    String       // e.g. restaurantname
+  status       DomainStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  restaurant   Restaurant   @relation(fields: [restaurantId], references: [id])
+
+  @@unique([domain])
+  @@unique([subdomain])
+}
+
+/// Cuisine tags for restaurants and discovery
+model CuisineTag {
+  id        String      @id @default(uuid())
+  name      String      @unique
+  slug      String      @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  restaurants Restaurant[] @relation("RestaurantCuisine", references: [id])
+}
+
+/// Many‑to‑many join table for restaurants and cuisine tags (Prisma implicit through above)
+
+/// Categories within a restaurant menu
+model MenuCategory {
+  id           String      @id @default(uuid())
+  restaurantId String
+  name         String
+  description  String?
+  sortOrder    Int         @default(0)
+
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id])
+  items        MenuItem[]
+
+  @@index([restaurantId])
+}
+
+/// Individual menu items
+model MenuItem {
+  id            String            @id @default(uuid())
+  categoryId    String
+  name          String
+  description   String?
+  price         Int               // in cents
+  available     Boolean           @default(true)
+  imageId       String?
+  sortOrder     Int               @default(0)
+
+  category      MenuCategory     @relation(fields: [categoryId], references: [id])
+  image         MediaAsset?      @relation("MenuItemImage", fields: [imageId], references: [id])
+  modifierGroups MenuItemModifierGroup[]
+  orderItems    OrderItem[]
+}
+
+/// Group of modifiers for a menu item (e.g. size, toppings)
+model MenuItemModifierGroup {
+  id           String      @id @default(uuid())
+  menuItemId   String
+  name         String
+  required     Boolean     @default(false)
+  minSelect    Int         @default(0)
+  maxSelect    Int         @default(1)
+  sortOrder    Int         @default(0)
+
+  menuItem     MenuItem    @relation(fields: [menuItemId], references: [id])
+  options      MenuItemModifierOption[]
+}
+
+/// Modifier option for a menu item (e.g. extra cheese +$1)
+model MenuItemModifierOption {
+  id                  String    @id @default(uuid())
+  modifierGroupId     String
+  name                String
+  price               Int       @default(0) // additional price
+  sortOrder           Int       @default(0)
+
+  modifierGroup       MenuItemModifierGroup @relation(fields: [modifierGroupId], references: [id])
+}
+
+/// Orders placed by customers
+model Order {
+  id            String       @id @default(uuid())
+  restaurantId  String
+  userId        String?
+  status        OrderStatus  @default(NEW)
+  orderType     OrderType    @default(PICKUP)
+  scheduledAt   DateTime?
+  totalAmount   Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id])
+  user          User?        @relation(fields: [userId], references: [id])
+  items         OrderItem[]
+
+  addressId     String?
+  deliveryAddress Address? @relation(fields: [addressId], references: [id])
+}
+
+/// Each item in an order
+model OrderItem {
+  id            String     @id @default(uuid())
+  orderId       String
+  menuItemId    String
+  quantity      Int        @default(1)
+  instructions  String?
+  price         Int        // price at order time
+
+  order         Order      @relation(fields: [orderId], references: [id])
+  menuItem      MenuItem   @relation(fields: [menuItemId], references: [id])
+  modifiers     OrderItemModifier[]
+}
+
+/// Selected modifiers for an order item
+model OrderItemModifier {
+  id              String   @id @default(uuid())
+  orderItemId     String
+  modifierOptionId String
+  price           Int      // price of modifier
+
+  orderItem       OrderItem @relation(fields: [orderItemId], references: [id])
+  modifierOption  MenuItemModifierOption @relation(fields: [modifierOptionId], references: [id])
+}
+
+/// Reviews left by customers
+model Review {
+  id            String       @id @default(uuid())
+  restaurantId  String
+  userId        String?
+  rating        Int          // 1–5
+  comment       String?
+  status        ReviewStatus @default(PENDING)
+  reply         String?
+  replyAt       DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id])
+  user          User?        @relation(fields: [userId], references: [id])
+}
+
+/// Address information for restaurants and orders
+model Address {
+  id        String     @id @default(uuid())
+  street    String
+  cityId    String
+  postalCode String
+  latitude  Float?
+  longitude Float?
+
+  city      City       @relation(fields: [cityId], references: [id])
+  restaurants Restaurant[]
+  orders      Order[]
+}
+
+/// Business hours of a restaurant
+model BusinessHour {
+  id           String    @id @default(uuid())
+  restaurantId String
+  dayOfWeek    Int       // 0 (Sunday) – 6 (Saturday)
+  openTime     String    // e.g. "09:00"
+  closeTime    String    // e.g. "22:00"
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+}
+
+/// Media assets uploaded (images, videos)
+model MediaAsset {
+  id          String     @id @default(uuid())
+  url         String
+  alt         String?
+  type        String     // image, video
+  uploadedById String?
+  restaurantId String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  uploadedBy  User?      @relation(fields: [uploadedById], references: [id])
+  restaurant  Restaurant? @relation(fields: [restaurantId], references: [id])
+
+  // Reverse relations defined on referencing models
+}
+
+/// List of cities for geo targeting
+model City {
+  id        String      @id @default(uuid())
+  name      String
+  slug      String      @unique
+  state     String?
+  country   String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  addresses Address[]
+  restaurants Restaurant[] @relation("CityRestaurants")
+  featuredPlacements FeaturedPlacement[]
+
+  @@index([slug])
+}
+
+/// Featured placements for restaurants
+model FeaturedPlacement {
+  id           String        @id @default(uuid())
+  restaurantId String
+  type         FeaturedType
+  cityId       String?
+  cuisineId    String?
+  startDate    DateTime
+  endDate      DateTime
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  city         City?       @relation(fields: [cityId], references: [id])
+  cuisine      CuisineTag? @relation(fields: [cuisineId], references: [id])
+}
+
+/// Analytics events for simple tracking
+model AnalyticsEvent {
+  id            String      @id @default(uuid())
+  restaurantId  String
+  type          String
+  metadata      Json?
+  timestamp     DateTime    @default(now())
+
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+}
+
+/// Admin actions log for audit trail
+model AdminActionLog {
+  id            String    @id @default(uuid())
+  adminId       String
+  action        String
+  targetId      String?
+  description   String?
+  createdAt     DateTime  @default(now())
+
+  admin         User      @relation(fields: [adminId], references: [id])
+}
