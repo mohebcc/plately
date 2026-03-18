@@ -86,6 +86,10 @@ model User {
   reviews          Review[]
   adminActionLogs  AdminActionLog[]
 
+  // Media assets uploaded by this user (e.g., restaurant owner uploading photos). This completes the
+  // one‑to‑many relation from MediaAsset.uploadedBy to User.
+  mediaAssets      MediaAsset[]
+
   @@index([email])
 }
 
