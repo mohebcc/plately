@@ -346,12 +346,15 @@ model MediaAsset {
   alt         String?
   type        String     // image, video
   uploadedById String?
-  restaurantId String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   uploadedBy  User?      @relation(fields: [uploadedById], references: [id])
-  restaurant  Restaurant? @relation(fields: [restaurantId], references: [id])
+  // Media assets no longer hold a direct foreign key to a restaurant. Instead, cover and
+  // logo images on a Restaurant are referenced via the coverImageId and logoImageId fields.
+  // If in the future you need to associate arbitrary media assets with a restaurant,
+  // introduce a separate relation or join table instead of an optional FK here.
+  // restaurantId and restaurant relation have been removed to avoid ambiguous relations.
 
   // Reverse relations defined on referencing models
 }
