@@ -364,8 +364,6 @@ model MediaAsset {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  /// Optional foreign key for the menu item that this media asset is the main image for.
-  menuItemId    String?   @unique
 
   /// User who uploaded this media. Optional because media may be uploaded programmatically
   /// during onboarding. Complements the User.mediaAssets relation.
@@ -384,7 +382,7 @@ model MediaAsset {
   logoFor        Restaurant?   @relation("RestaurantLogo")
 
   /// Menu item that this asset is the main image for. Complements the MenuItem.image relation.
-  menuItem       MenuItem?     @relation("MenuItemImage", fields: [menuItemId], references: [id])
+  menuItem       MenuItem?     @relation("MenuItemImage")
 }
 
 /// List of cities for geo targeting
