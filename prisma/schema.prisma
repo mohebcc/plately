@@ -113,7 +113,6 @@ model Restaurant {
   ownerId         String?
   // planId removed; use subscription plan via Subscription
   //planId         String?
-  subscriptionId  String?
   addressId       String?
   coverImageId    String?    @unique
   logoImageId     String?    @unique
@@ -122,7 +121,8 @@ model Restaurant {
   owner        User?             @relation("RestaurantOwners", fields: [ownerId], references: [id])
   // plan relation removed; restaurant's plan derived via subscription
   //plan         SubscriptionPlan? @relation(fields: [planId], references: [id])
-  subscription Subscription?     @relation(fields: [subscriptionId], references: [id])
+  /// Subscription for this restaurant (one-to-one). Related via Subscription.restaurantId
+  subscription Subscription?     @relation("RestaurantSubscription")
   address      Address?          @relation(fields: [addressId], references: [id])
   coverImage   MediaAsset?       @relation("RestaurantCover", fields: [coverImageId], references: [id])
   logoImage    MediaAsset?       @relation("RestaurantLogo", fields: [logoImageId], references: [id])
@@ -169,7 +169,8 @@ model Subscription {
   endDate             DateTime?
   nextBillingDate     DateTime?
 
-  restaurant  Restaurant   @relation(fields: [restaurantId], references: [id])
+  /// Owning restaurant for this subscription
+  restaurant  Restaurant   @relation("RestaurantSubscription", fields: [restaurantId], references: [id])
   plan        SubscriptionPlan @relation(fields: [planId], references: [id])
 
   @@unique([restaurantId])
