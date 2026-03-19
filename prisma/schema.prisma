@@ -230,12 +230,13 @@ model MenuItem {
   description   String?
   price         Int               // in cents
   available     Boolean           @default(true)
-  imageId       String?
+  /// ID of the image associated with this menu item. Each menu item should have at most one main image.
+  imageId       String? @unique
   sortOrder     Int               @default(0)
 
-  category      MenuCategory     @relation(fields: [categoryId], references: [id])
-  /// Image associated with this menu item.
-  image         MediaAsset?      @relation(fields: [imageId], references: [id])
+  category      MenuCategory      @relation(fields: [categoryId], references: [id])
+  /// Image associated with this menu item. Uses a named relation to link to MediaAsset
+  image         MediaAsset?       @relation("MenuItemImage", fields: [imageId], references: [id])
   modifierGroups MenuItemModifierGroup[]
   orderItems    OrderItem[]
 }
@@ -363,6 +364,9 @@ model MediaAsset {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
+  /// Optional foreign key for the menu item that this media asset is the main image for.
+  menuItemId    String?   @unique
+
   /// User who uploaded this media. Optional because media may be uploaded programmatically
   /// during onboarding. Complements the User.mediaAssets relation.
   uploadedBy     User?        @relation("UploadedMedia", fields: [uploadedById], references: [id])
@@ -378,6 +382,9 @@ model MediaAsset {
 
   /// Logo image for a restaurant. Complements the Restaurant.logoImage relation.
   logoFor        Restaurant?   @relation("RestaurantLogo")
+
+  /// Menu item that this asset is the main image for. Complements the MenuItem.image relation.
+  menuItem       MenuItem?     @relation("MenuItemImage", fields: [menuItemId], references: [id])
 }
 
 /// List of cities for geo targeting
