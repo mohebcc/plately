@@ -264,6 +264,9 @@ model MenuItemModifierOption {
   sortOrder           Int       @default(0)
 
   modifierGroup       MenuItemModifierGroup @relation(fields: [modifierGroupId], references: [id])
+
+  /// Order item modifiers that use this option (reverse relation).
+  orderItemModifiers OrderItemModifier[]
 }
 
 /// Orders placed by customers
