@@ -233,7 +233,7 @@ model MenuItem {
   sortOrder     Int               @default(0)
 
   category      MenuCategory     @relation(fields: [categoryId], references: [id])
-  image         MediaAsset?      @relation("MenuItemImage", fields: [imageId], references: [id])
+  image         MediaAsset?      @relation(fields: [imageId], references: [id])
   modifierGroups MenuItemModifierGroup[]
   orderItems    OrderItem[]
 }
@@ -358,36 +358,24 @@ model MediaAsset {
   type          String     // e.g. image, video
   uploadedById  String?
   restaurantId  String?
-  menuItemId    String?
+  // menuItemId removed: menu items no longer have a generic media relation
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  /**
-   * User who uploaded this media.  Optional because media may be uploaded
-   * programmatically during onboarding.  Complements the User.mediaAssets relation.
-   */
+  /// User who uploaded this media. Optional because media may be uploaded programmatically
+  /// during onboarding. Complements the User.mediaAssets relation.
   uploadedBy     User?        @relation("UploadedMedia", fields: [uploadedById], references: [id])
 
-  /**
-   * Generic gallery association for a restaurant.  Complements the
-   * Restaurant.mediaAssets relation.  Use this for arbitrary gallery images.
-   */
+  /// Generic gallery association for a restaurant. Complements the
+  /// Restaurant.mediaAssets relation. Use this for arbitrary gallery images.
   restaurant     Restaurant?   @relation("RestaurantMedia", fields: [restaurantId], references: [id])
 
-  /**
-   * Image associated with a menu item (thumbnail).  Complements the
-   * MenuItem.image relation.
-   */
-  menuItem       MenuItem?     @relation("MenuItemImage", fields: [menuItemId], references: [id])
+  // Removed menuItem relation: menu items now reference images via MenuItem.image field
 
-  /**
-   * Cover image for a restaurant.  Complements the Restaurant.coverImage relation.
-   */
+  /// Cover image for a restaurant. Complements the Restaurant.coverImage relation.
   coverFor       Restaurant?   @relation("RestaurantCover")
 
-  /**
-   * Logo image for a restaurant.  Complements the Restaurant.logoImage relation.
-   */
+  /// Logo image for a restaurant. Complements the Restaurant.logoImage relation.
   logoFor        Restaurant?   @relation("RestaurantLogo")
 }
 
