@@ -115,8 +115,8 @@ model Restaurant {
   //planId         String?
   subscriptionId  String?
   addressId       String?
-  coverImageId    String?
-  logoImageId     String?
+  coverImageId    String?    @unique
+  logoImageId     String?    @unique
 
   // Relations
   owner        User?             @relation("RestaurantOwners", fields: [ownerId], references: [id])
