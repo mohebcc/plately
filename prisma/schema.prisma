@@ -235,8 +235,7 @@ model MenuItem {
 
   category      MenuCategory     @relation(fields: [categoryId], references: [id])
   /// Image associated with this menu item.
-  /// Uses a named relation so that MediaAsset.menuItem can complete the relation.
-  image         MediaAsset?      @relation("MenuItemImage", fields: [imageId], references: [id])
+  image         MediaAsset?      @relation(fields: [imageId], references: [id])
   modifierGroups MenuItemModifierGroup[]
   orderItems    OrderItem[]
 }
@@ -361,9 +360,6 @@ model MediaAsset {
   type          String     // e.g. image, video
   uploadedById  String?
   restaurantId  String?
-  /// Optional reference to a menu item that this media is the image for.
-  /// This complements the MenuItem.image field via a named relation.
-  menuItemId    String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -376,8 +372,6 @@ model MediaAsset {
   restaurant     Restaurant?   @relation("RestaurantMedia", fields: [restaurantId], references: [id])
 
 
-  /// Menu item that this media is the image for. Completes the MenuItem.image relation.
-  menuItem      MenuItem?   @relation("MenuItemImage", fields: [menuItemId], references: [id])
 
   /// Cover image for a restaurant. Complements the Restaurant.coverImage relation.
   coverFor       Restaurant?   @relation("RestaurantCover")
